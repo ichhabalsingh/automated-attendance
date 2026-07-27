@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Attendance Check-In</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon">A</div>
+            <div class="logo-text">
+                <h1>Classroom Attendance</h1>
+                <p>Local Check-In Portal</p>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="student-card glass-panel" id="portal-card">
+            <!-- Normal Interaction Panel -->
+            <div id="form-panel">
+                <h2 id="portal-title">Student Registration</h2>
+                <p class="subtitle" id="portal-subtitle">Register your details once to join the attendance session</p>
+
+                <!-- Saved Info Bar (Only shown if student is already remembered) -->
+                <div id="remembered-badge" class="student-info-badge" style="display: none;">
+                    👋 Connected as <strong id="remembered-name">John Doe</strong> (<span id="remembered-roll">23512</span>)
+                </div>
+
+                <form id="attendance-form" onsubmit="handleFormSubmit(event)">
+                    <!-- Roll Number (Always required) -->
+                    <div class="form-group">
+                        <label for="roll-number">Roll Number</label>
+                        <input type="text" id="roll-number" class="form-control" placeholder="e.g. 23CS012" required>
+                    </div>
+
+                    <!-- Full Name (Always visible for registration) -->
+                    <div class="form-group" id="name-group">
+                        <label for="student-name">Full Name</label>
+                        <input type="text" id="student-name" class="form-control" placeholder="e.g. John Doe" required>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.75rem;" id="submit-btn">
+                        Submit Check-In
+                    </button>
+                </form>
+            </div>
+
+            <!-- Auto Checking In Loader -->
+            <div id="loader-panel" class="status-container" style="display: none;">
+                <div style="margin: 2rem 0;">
+                    <div style="width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s infinite linear; margin: 0 auto 1.5rem;"></div>
+                    <div class="status-title">Checking you in...</div>
+                    <div class="status-msg">We are submitting your attendance to the server automatically.</div>
+                </div>
+            </div>
+
+            <!-- Success / Error Status Panel -->
+            <div id="status-panel" class="status-container">
+                <div id="status-icon-box" class="status-icon">
+                    <!-- SVG Check / Cross dynamically added -->
+                </div>
+                <div class="status-title" id="status-title-text">Success!</div>
+                <div class="status-msg" id="status-desc">You are successfully marked present for this session.</div>
+                
+                <div id="result-badge" class="student-info-badge" style="display: none;">
+                    <!-- Details of checked in user -->
+                </div>
+
+                <button class="btn btn-secondary" style="width: 100%;" onclick="resetPortalView()">
+                    Done
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Automated Local Attendance System &bull; Active Network Mode</p>
+    </footer>
+
+    <!-- Spin animation for inline loader -->
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
