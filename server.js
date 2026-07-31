@@ -7,9 +7,55 @@ const QRCode = require('qrcode');
 const app = express();
 const PORT = 3000;
 
+// Admin Security Setup
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || Math.floor(100000 + Math.random() * 900000).toString();
+const ADMIN_SESSION_TOKEN = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+
+// Helper to parse cookies from headers
+function getCookie(req, name) {
+    const list = {};
+    const rc = req.headers.cookie;
+    if (rc) {
+        rc.split(';').forEach(cookie => {
+            const parts = cookie.split('=');
+            list[parts.shift().trim()] = decodeURI(parts.join('='));
+        });
+    }
+    return list[name];
+}
+
+// Authentication middleware
+function requireAuth(req, res, next) {
+    const token = getCookie(req, 'admin_token');
+    if (token === ADMIN_SESSION_TOKEN) {
+        return next();
+    }
+    if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Authentication required' });
+    }
+    res.redirect('/login.html');
+}
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Protect admin pages and scripts before exposing public static files
+app.use((req, res, next) => {
+    const isStudentRoute = req.path === '/' || 
+                           req.path === '/index.html' || 
+                           req.path === '/api/checkin' || 
+                           req.path === '/api/login' ||
+                           req.path === '/login.html' ||
+                           req.path.startsWith('/css/') || 
+                           req.path.startsWith('/js/main.js');
+    
+    if (!isStudentRoute) {
+        return requireAuth(req, res, next);
+    }
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Ensure data folder exists
@@ -48,9 +94,31 @@ let attendanceHistory = readJSON(ATTENDANCE_FILE, []);
 
 // Active session state
 let activeSession = null;
+let pinRotationInterval = null;
 
 // Clients subscribed to Server-Sent Events (SSE)
 let sseClients = [];
+
+// Rotate pin for active session
+async function rotateSessionPin() {
+    if (!activeSession) return;
+    
+    const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+    activeSession.previousPin = activeSession.pin;
+    activeSession.pin = newPin;
+    activeSession.url = `http://${LOCAL_IP}:${PORT}/?session=${activeSession.id}&pin=${newPin}`;
+    
+    try {
+        activeSession.qrCode = await QRCode.toDataURL(activeSession.url);
+        broadcastSSE('session_update', {
+            pin: activeSession.pin,
+            qrCode: activeSession.qrCode,
+            url: activeSession.url
+        });
+    } catch (err) {
+        console.error('Failed to rotate session PIN:', err);
+    }
+}
 
 // Helper to detect local IPv4 address
 function getLocalIpAddress() {
@@ -76,6 +144,16 @@ function broadcastSSE(type, data) {
 }
 
 // API Endpoints
+
+// 0. Login API for Teacher Dashboard
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+        res.setHeader('Set-Cookie', `admin_token=${ADMIN_SESSION_TOKEN}; Path=/; HttpOnly; SameSite=Lax`);
+        return res.json({ success: true });
+    }
+    res.status(401).json({ error: 'Invalid password' });
+});
 
 // 1. Get current server state and local IP
 app.get('/api/server-info', (req, res) => {
@@ -103,10 +181,14 @@ app.post('/api/session/start', async (req, res) => {
             id: sessionId,
             startTime: new Date().toISOString(),
             pin: pin,
+            previousPin: null,
             qrCode: qrCodeDataUrl,
             url: checkinUrl,
             records: [] // temporary in-memory store for fast lookup
         };
+
+        // Start PIN rotation interval (rotates every 30 seconds)
+        pinRotationInterval = setInterval(rotateSessionPin, 30000);
 
         broadcastSSE('session_start', activeSession);
         res.json({ message: 'Session started successfully', session: activeSession });
@@ -119,6 +201,11 @@ app.post('/api/session/start', async (req, res) => {
 app.post('/api/session/stop', (req, res) => {
     if (!activeSession) {
         return res.status(400).json({ error: 'No active session to stop.' });
+    }
+
+    if (pinRotationInterval) {
+        clearInterval(pinRotationInterval);
+        pinRotationInterval = null;
     }
 
     const completedSession = {
@@ -158,7 +245,7 @@ app.post('/api/checkin', (req, res) => {
         return res.status(400).json({ error: 'No active attendance session.' });
     }
 
-    if (activeSession.id !== sessionId || activeSession.pin !== pin) {
+    if (activeSession.id !== sessionId || (activeSession.pin !== pin && activeSession.previousPin !== pin)) {
         return res.status(400).json({ error: 'Invalid or expired session session/PIN link. Please scan the active QR Code.' });
     }
 
@@ -424,5 +511,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Automated Attendance Server Started!`);
     console.log(`📡 Local Network Access URL: http://${LOCAL_IP}:${PORT}`);
     console.log(`👨‍🏫 Teacher Dashboard:         http://${LOCAL_IP}:${PORT}/teacher`);
+    console.log(`🔑 Admin Password:           ${ADMIN_PASSWORD}`);
     console.log(`======================================================\n`);
 });

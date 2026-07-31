@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchServerInfo() {
     try {
         const response = await fetch('/api/server-info');
+        if (response.status === 401) {
+            window.location.href = '/login.html';
+            return;
+        }
         const data = await response.json();
         
         // Update URL labels
@@ -39,6 +43,10 @@ async function fetchServerInfo() {
 async function fetchStudents() {
     try {
         const response = await fetch('/api/students');
+        if (response.status === 401) {
+            window.location.href = '/login.html';
+            return;
+        }
         const data = await response.json();
         registeredStudents = data;
         document.getElementById('total-students-count').innerText = registeredStudents.length;
@@ -52,6 +60,10 @@ async function fetchStudents() {
 async function fetchHistory() {
     try {
         const response = await fetch('/api/history');
+        if (response.status === 401) {
+            window.location.href = '/login.html';
+            return;
+        }
         const data = await response.json();
         attendanceHistory = data;
         renderHistoryTable();
@@ -93,6 +105,15 @@ function handleSSEMessage(type, data) {
     switch (type) {
         case 'session_start':
             setupActiveSessionView(data);
+            break;
+        case 'session_update':
+            if (activeSession) {
+                activeSession.pin = data.pin;
+                activeSession.qrCode = data.qrCode;
+                activeSession.url = data.url;
+                document.getElementById('qr-image').src = data.qrCode;
+                document.getElementById('classroom-url').innerText = data.url;
+            }
             break;
         case 'session_stop':
             setupInactiveSessionView();

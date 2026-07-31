@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Panel Login</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 2.5rem;
+            margin: 2rem auto;
+            text-align: center;
+        }
+        .login-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--color-primary) 0%, #a855f7 100%);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.75rem;
+            box-shadow: 0 0 20px var(--color-primary-glow);
+            margin: 0 auto 1.5rem;
+        }
+        .error-message {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: #fda4af;
+            border-radius: var(--radius-sm);
+            padding: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon">A</div>
+            <div class="logo-text">
+                <h1>Classroom Attendance</h1>
+                <p>Teacher Console</p>
+            </div>
+        </div>
+    </header>
+
+    <main style="display: flex; align-items: center; justify-content: center;">
+        <div class="login-card glass-panel">
+            <div class="login-icon">🔒</div>
+            <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; font-weight: 700;">Teacher Panel</h2>
+            <p class="subtitle" style="margin-bottom: 2rem; color: var(--text-secondary); font-size: 0.9rem;">
+                Enter password to access the dashboard
+            </p>
+
+            <div id="error-box" class="error-message"></div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group" style="text-align: left; margin-bottom: 1.5rem;">
+                    <label for="password" style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="••••••••" required style="width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--panel-border); background: rgba(15, 23, 42, 0.4); color: var(--text-primary); outline: none; transition: var(--transition);">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="login-btn">
+                    Access Dashboard
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>Automated Local Attendance System &bull; Secure Teacher Portal</p>
+    </footer>
+
+    <script>
+        // Check if already authenticated (redirect to teacher panel if so)
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/session/active');
+                if (res.ok) {
+                    window.location.href = '/teacher';
+                }
+            } catch (err) {
+                // Not authenticated or network error
+            }
+        }
+        checkStatus();
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            const errorBox = document.getElementById('error-box');
+            const loginBtn = document.getElementById('login-btn');
+
+            errorBox.style.display = 'none';
+            loginBtn.disabled = true;
+            loginBtn.innerText = 'Verifying...';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Cookie is set by server, redirect to teacher panel
+                    window.location.href = '/teacher';
+                } else {
+                    errorBox.innerText = result.error || 'Invalid password. Please try again.';
+                    errorBox.style.display = 'block';
+                }
+            } catch (err) {
+                errorBox.innerText = 'Connection error. Is the server running?';
+                errorBox.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerText = 'Access Dashboard';
+            }
+        }
+    </script>
+</body>
+</html>
