@@ -37,7 +37,7 @@ An automated, web-based classroom attendance system that uses dynamic rotating Q
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ichhabalsingh/automated-attendance
    cd automated-attendance
    ```
 
