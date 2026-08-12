@@ -4,7 +4,8 @@
   "description": "Automated attendance system for local router classrooms",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 0"
   },
   "dependencies": {
     "express": "^4.19.2",
